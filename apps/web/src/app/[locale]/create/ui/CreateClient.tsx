@@ -6,7 +6,7 @@ import {Asset, AssetKind, fetchAssets, fetchSlotGames, SlotGame} from "@/lib/api
 const KIND_TABS: {key: AssetKind; label: string}[] = [
   { key: "BG", label: "BG" },
   { key: "TEXT", label: "TEXT" },
-  { key: "ELEMENT", label: "ELEMENTS" }
+  { key: "ELEMENTS", label: "ELEMENTS" }
 ];
 
 function cls(...a: Array<string | false | undefined | null>) {
@@ -17,7 +17,7 @@ export default function CreateClient() {
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [slots, setSlots] = useState<SlotGame[]>([]);
   const [activeSlotSlug, setActiveSlotSlug] = useState<string>("");
-  const [kind, setKind] = useState<AssetKind>("ELEMENT");
+  const [kind, setKind] = useState<AssetKind>("ELEMENTS");
   const [loadingAssets, setLoadingAssets] = useState(false);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [q, setQ] = useState("");
@@ -82,7 +82,7 @@ export default function CreateClient() {
       setSelected(s => ({...s, TEXT: a}));
       return;
     }
-    // ELEMENT
+    // ELEMENTS
     setSelected(s => ({...s, ELEMENTS: [...s.ELEMENTS, a]}));
   }
 

@@ -13,6 +13,7 @@
     "dev:api": "pnpm --filter @cc/api dev",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
+    "prisma:generate": "pnpm --filter @cc/api prisma generate",
     "prisma:migrate": "pnpm --filter @cc/api prisma migrate dev",
     "prisma:studio": "pnpm --filter @cc/api prisma studio"
   },

@@ -10,22 +10,26 @@ export class AssetsController {
 
   @Get()
   async list(
-    @Query("slotGameSlug") slotGameSlug?: string,
-    @Query("category") category?: Category
+    @Query("slotSlug") slotSlug?: string,
+    @Query("kind") kind?: string
   ) {
-    if (!slotGameSlug) throw new BadRequestException("slotGameSlug is required");
-    if (!category || !categories.includes(category)) {
-      throw new BadRequestException("category must be BG|TEXT|ELEMENTS");
+    if (!slotSlug) throw new BadRequestException("slotSlug is required");
+
+    const normalizedKind = (kind ?? "").toUpperCase();
+    const category = normalizedKind === "ELEMENT" ? "ELEMENTS" : normalizedKind;
+
+    if (!categories.includes(category as Category)) {
+      throw new BadRequestException("kind must be BG|TEXT|ELEMENTS");
     }
 
     const slotGame = await this.prisma.slotGame.findUnique({
-      where: { slug: slotGameSlug },
+      where: { slug: slotSlug },
       select: { id: true },
     });
     if (!slotGame) return { items: [] };
 
     const items = await this.prisma.asset.findMany({
-      where: { slotGameId: slotGame.id, category },
+      where: { slotGameId: slotGame.id, category: category as Category },
       orderBy: { fileName: "asc" },
       select: {
         id: true,
@@ -42,7 +46,8 @@ export class AssetsController {
     return {
       items: items.map((a) => ({
         ...a,
-        url: `/files/${encodeURIComponent(a.storageKey)}`,
+        kind: a.category,
+        publicUrl: `/files/${encodeURIComponent(a.storageKey)}`,
       })),
     };
   }
