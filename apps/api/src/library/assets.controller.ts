@@ -1,0 +1,49 @@
+import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
+import { PrismaService } from "../prisma.service";
+
+const categories = ["BG", "TEXT", "ELEMENTS"] as const;
+type Category = (typeof categories)[number];
+
+@Controller("assets")
+export class AssetsController {
+  constructor(private prisma: PrismaService) {}
+
+  @Get()
+  async list(
+    @Query("slotGameSlug") slotGameSlug?: string,
+    @Query("category") category?: Category
+  ) {
+    if (!slotGameSlug) throw new BadRequestException("slotGameSlug is required");
+    if (!category || !categories.includes(category)) {
+      throw new BadRequestException("category must be BG|TEXT|ELEMENTS");
+    }
+
+    const slotGame = await this.prisma.slotGame.findUnique({
+      where: { slug: slotGameSlug },
+      select: { id: true },
+    });
+    if (!slotGame) return { items: [] };
+
+    const items = await this.prisma.asset.findMany({
+      where: { slotGameId: slotGame.id, category },
+      orderBy: { fileName: "asc" },
+      select: {
+        id: true,
+        fileName: true,
+        storageKey: true,
+        mimeType: true,
+        width: true,
+        height: true,
+        category: true,
+      },
+    });
+
+    // Добавим удобный URL для превью файла
+    return {
+      items: items.map((a) => ({
+        ...a,
+        url: `/files/${encodeURIComponent(a.storageKey)}`,
+      })),
+    };
+  }
+}

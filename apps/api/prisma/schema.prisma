@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AssetCategory {
+  BG
+  TEXT
+  ELEMENTS
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  balanceCents Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SlotGame {
+  id        String   @id @default(cuid())
+  name      String   @unique // "Gates of Olympus ⚡️"
+  slug      String   @unique // "gates-of-olympus"
+  createdAt DateTime @default(now())
+
+  assets    Asset[]
+}
+
+model Asset {
+  id         String        @id @default(cuid())
+  slotGameId String
+  slotGame   SlotGame      @relation(fields: [slotGameId], references: [id])
+
+  category   AssetCategory
+  fileName   String
+  storageKey String        @unique  // путь к файлу в storage/library/...
+
+  mimeType   String
+  width      Int?
+  height     Int?
+  tags       String[]      @default([])
+
+  createdAt  DateTime @default(now())
+
+  @@index([slotGameId, category])
+}

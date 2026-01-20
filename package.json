@@ -1,0 +1,27 @@
+{
+  "name": "creative-construct",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "scan:library": "node scripts/scan-library.cjs",
+    "dev": "pnpm -r --parallel dev",
+    "dev:web": "pnpm --filter @cc/web dev",
+    "dev:api": "pnpm --filter @cc/api dev",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "prisma:migrate": "pnpm --filter @cc/api prisma migrate dev",
+    "prisma:studio": "pnpm --filter @cc/api prisma studio"
+  },
+  "devDependencies": {
+    "prisma": "5.22.0",
+    "ts-node": "^10.9.2"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "dotenv": "^17.2.3"
+  }
+}
