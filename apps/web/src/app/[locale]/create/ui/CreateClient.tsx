@@ -2,7 +2,8 @@
 
 import {useEffect, useMemo, useRef, useState} from "react";
 import {Asset, AssetKind, fetchAssets, fetchSlotGames, SlotGame} from "@/lib/api";
-import {EditorCanvas, EditorCanvasRef} from "./EditorCanvas";
+import dynamic from "next/dynamic";
+import {EditorCanvasRef} from "./EditorCanvas";
 import {useSearchParams} from "next/navigation";
 
 const KIND_TABS: {key: AssetKind; label: string}[] = [
@@ -185,6 +186,15 @@ export default function CreateClient() {
     const filename = `creative-${kind}-${Date.now()}.png`;
     editorRef.current?.exportDownload(filename);
   }
+
+  const EditorCanvas = dynamic(() => import("./EditorCanvas").then((mod) => mod.EditorCanvas), {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[360px] items-center justify-center rounded-2xl border bg-neutral-50 text-sm text-neutral-500">
+        Loading editor…
+      </div>
+    )
+  });
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
