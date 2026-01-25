@@ -2,16 +2,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export type SlotGame = { id: string; name: string; slug: string };
 
-export type AssetKind = "BG" | "TEXT" | "ELEMENT";
+export type AssetKind = "BG" | "TEXT" | "ELEMENTS";
 
 export type Asset = {
   id: string;
   kind: AssetKind;
-  slotSlug: string;
   fileName: string;
   publicUrl: string; // например: http://localhost:4000/files/...
   width?: number | null;
   height?: number | null;
+  sizeBytes?: number | null;
 };
 
 export async function fetchSlotGames(): Promise<SlotGame[]> {
@@ -29,5 +29,10 @@ export async function fetchAssets(slotSlug: string, kind: AssetKind): Promise<As
   const res = await fetch(url.toString(), { cache: "no-store" });
   if (!res.ok) throw new Error(`assets failed: ${res.status}`);
   const data = await res.json();
-  return data.items ?? [];
+  return (data.items ?? []).map((asset: Asset) => ({
+    ...asset,
+    publicUrl: asset.publicUrl?.startsWith("http")
+      ? asset.publicUrl
+      : `${API_URL}${asset.publicUrl ?? ""}`,
+  }));
 }

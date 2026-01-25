@@ -13,6 +13,7 @@
     "dev:api": "pnpm --filter @cc/api dev",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
+    "prisma:generate": "pnpm --filter @cc/api prisma generate",
     "prisma:migrate": "pnpm --filter @cc/api prisma migrate dev",
     "prisma:studio": "pnpm --filter @cc/api prisma studio"
   },
@@ -22,6 +23,8 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
-    "dotenv": "^17.2.3"
+    "chokidar": "^3.6.0",
+    "dotenv": "^17.2.3",
+    "image-size": "^1.1.1"
   }
 }
