@@ -5,11 +5,12 @@ require("dotenv").config({ path: "apps/api/.env" });
 require("dotenv").config(); // на всякий (если есть корневой .env)
 
 const { PrismaClient } = require("@prisma/client");
+const chokidar = require("chokidar");
 const sizeOf = require("image-size");
 
 const prisma = new PrismaClient();
 const STORAGE_DIR = process.env.STORAGE_DIR || "storage";
-const LIB_ROOT = path.resolve(process.cwd(), STORAGE_DIR);
+const LIB_ROOT = path.resolve(process.cwd(), STORAGE_DIR, "library");
 
 function slugify(input) {
   return (
@@ -56,7 +57,7 @@ async function upsertSlotGame(name) {
 
 async function upsertAsset(slotGameId, category, absPath) {
   const rel = path.relative(LIB_ROOT, absPath).replace(/\\/g, "/");
-  const storageKey = `${STORAGE_DIR}/${rel}`;
+  const storageKey = `${STORAGE_DIR}/library/${rel}`;
   const fileName = path.basename(absPath);
   const stats = fs.statSync(absPath);
   const { width, height } = readImageMeta(absPath);
@@ -85,7 +86,31 @@ async function upsertAsset(slotGameId, category, absPath) {
   });
 }
 
-async function main() {
+async function removeMissingAssets(slotGameId, seenKeys) {
+  if (seenKeys.size === 0) {
+    await prisma.asset.deleteMany({ where: { slotGameId } });
+    return;
+  }
+
+  await prisma.asset.deleteMany({
+    where: {
+      slotGameId,
+      storageKey: { notIn: Array.from(seenKeys) },
+    },
+  });
+}
+
+async function removeMissingSlots(scannedSlugs) {
+  const existing = await prisma.slotGame.findMany({ select: { id: true, slug: true } });
+  const stale = existing.filter((slot) => !scannedSlugs.has(slot.slug));
+  if (stale.length === 0) return;
+
+  const staleIds = stale.map((slot) => slot.id);
+  await prisma.asset.deleteMany({ where: { slotGameId: { in: staleIds } } });
+  await prisma.slotGame.deleteMany({ where: { id: { in: staleIds } } });
+}
+
+async function scanOnce() {
   if (!fs.existsSync(LIB_ROOT)) {
     console.error(`[scan] Folder not found: ${LIB_ROOT}`);
     process.exit(1);
@@ -99,10 +124,13 @@ async function main() {
   console.log(`[scan] Slot folders: ${slotFolders.length}`);
   let assetsUpserted = 0;
   let skipped = 0;
+  const scannedSlugs = new Set();
 
   for (const slotName of slotFolders) {
     const slotPath = path.join(LIB_ROOT, slotName);
     const slotGame = await upsertSlotGame(slotName);
+    scannedSlugs.add(slotGame.slug);
+    const seenKeys = new Set();
 
     const categories = new Map([
       ["bg", "BG"],
@@ -134,15 +162,54 @@ async function main() {
           continue;
         }
 
-        await upsertAsset(slotGame.id, cat, path.join(catPath, f));
+        const absPath = path.join(catPath, f);
+        await upsertAsset(slotGame.id, cat, absPath);
         assetsUpserted += 1;
+        const rel = path.relative(LIB_ROOT, absPath).replace(/\\/g, "/");
+        seenKeys.add(`${STORAGE_DIR}/library/${rel}`);
       }
     }
+
+    await removeMissingAssets(slotGame.id, seenKeys);
   }
+
+  await removeMissingSlots(scannedSlugs);
 
   console.log(`[scan] Upserted assets: ${assetsUpserted}`);
   console.log(`[scan] Skipped entries: ${skipped}`);
   console.log("[scan] Done");
+}
+
+async function main() {
+  const watch = process.argv.includes("--watch");
+  await scanOnce();
+
+  if (!watch) return;
+
+  console.log("[scan] Watching storage for changes...");
+  let timer = null;
+
+  const watcher = chokidar.watch(LIB_ROOT, {
+    ignoreInitial: true,
+    awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 },
+  });
+
+  const schedule = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        await scanOnce();
+      } catch (error) {
+        console.error(error);
+      }
+    }, 400);
+  };
+
+  watcher.on("add", schedule);
+  watcher.on("unlink", schedule);
+  watcher.on("addDir", schedule);
+  watcher.on("unlinkDir", schedule);
+  watcher.on("change", schedule);
 }
 
 main()

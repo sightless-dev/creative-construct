@@ -4,6 +4,7 @@ import {useTranslations} from "next-intl";
 export default function Home({params}: {params: {locale: string}}) {
   const t = useTranslations();
   const locale = params.locale;
+  const featureKeys = ["library", "templates", "export"] as const;
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
@@ -77,10 +78,10 @@ export default function Home({params}: {params: {locale: string}}) {
         </div>
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {["home.feature.library", "home.feature.templates", "home.feature.export"].map((key) => (
+          {featureKeys.map((key) => (
             <div key={key} className="rounded-2xl border bg-white p-5">
-              <div className="text-sm font-semibold">{t(key)}</div>
-              <div className="mt-2 text-sm text-neutral-600">{t(`${key}.desc`)}</div>
+              <div className="text-sm font-semibold">{t(`home.feature.${key}.title`)}</div>
+              <div className="mt-2 text-sm text-neutral-600">{t(`home.feature.${key}.desc`)}</div>
             </div>
           ))}
         </div>

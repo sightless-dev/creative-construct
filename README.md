@@ -35,6 +35,12 @@ pnpm prisma:generate
 pnpm scan:library
 ```
 
+Watch for changes (optional):
+
+```bash
+pnpm scan:library -- --watch
+```
+
 5) Run apps:
 
 ```bash
