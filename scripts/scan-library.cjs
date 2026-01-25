@@ -9,7 +9,7 @@ const sizeOf = require("image-size");
 
 const prisma = new PrismaClient();
 const STORAGE_DIR = process.env.STORAGE_DIR || "storage";
-const LIB_ROOT = path.resolve(process.cwd(), STORAGE_DIR, "library");
+const LIB_ROOT = path.resolve(process.cwd(), STORAGE_DIR);
 
 function slugify(input) {
   return (
@@ -56,7 +56,7 @@ async function upsertSlotGame(name) {
 
 async function upsertAsset(slotGameId, category, absPath) {
   const rel = path.relative(LIB_ROOT, absPath).replace(/\\/g, "/");
-  const storageKey = `${STORAGE_DIR}/library/${rel}`;
+  const storageKey = `${STORAGE_DIR}/${rel}`;
   const fileName = path.basename(absPath);
   const stats = fs.statSync(absPath);
   const { width, height } = readImageMeta(absPath);
