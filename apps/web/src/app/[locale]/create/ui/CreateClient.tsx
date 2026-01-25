@@ -6,7 +6,7 @@ import {Asset, AssetKind, fetchAssets, fetchSlotGames, SlotGame} from "@/lib/api
 const KIND_TABS: {key: AssetKind; label: string}[] = [
   { key: "BG", label: "BG" },
   { key: "TEXT", label: "TEXT" },
-  { key: "ELEMENT", label: "ELEMENTS" }
+  { key: "ELEMENTS", label: "ELEMENTS" }
 ];
 
 function cls(...a: Array<string | false | undefined | null>) {
@@ -17,9 +17,12 @@ export default function CreateClient() {
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [slots, setSlots] = useState<SlotGame[]>([]);
   const [activeSlotSlug, setActiveSlotSlug] = useState<string>("");
-  const [kind, setKind] = useState<AssetKind>("ELEMENT");
+  const [kind, setKind] = useState<AssetKind>("ELEMENTS");
   const [loadingAssets, setLoadingAssets] = useState(false);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [galleryBg, setGalleryBg] = useState<Asset[]>([]);
+  const [galleryElements, setGalleryElements] = useState<Asset[]>([]);
+  const [loadingGallery, setLoadingGallery] = useState(false);
   const [q, setQ] = useState("");
 
   // “мини-проект”: выбранные ассеты
@@ -67,6 +70,34 @@ export default function CreateClient() {
     };
   }, [activeSlotSlug, kind]);
 
+  useEffect(() => {
+    if (!activeSlotSlug) return;
+    let alive = true;
+    (async () => {
+      setLoadingGallery(true);
+      try {
+        const [bg, elements] = await Promise.all([
+          fetchAssets(activeSlotSlug, "BG"),
+          fetchAssets(activeSlotSlug, "ELEMENTS")
+        ]);
+        if (!alive) return;
+        setGalleryBg(bg);
+        setGalleryElements(elements);
+      } catch (e) {
+        console.error(e);
+        if (alive) {
+          setGalleryBg([]);
+          setGalleryElements([]);
+        }
+      } finally {
+        if (alive) setLoadingGallery(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [activeSlotSlug]);
+
   const filteredAssets = useMemo(() => {
     const qq = q.trim().toLowerCase();
     if (!qq) return assets;
@@ -82,7 +113,7 @@ export default function CreateClient() {
       setSelected(s => ({...s, TEXT: a}));
       return;
     }
-    // ELEMENT
+    // ELEMENTS
     setSelected(s => ({...s, ELEMENTS: [...s.ELEMENTS, a]}));
   }
 
@@ -218,7 +249,7 @@ export default function CreateClient() {
           </div>
 
           {/* RIGHT: assets */}
-          <div className="col-span-12 md:col-span-9">
+          <div className="col-span-12 md:col-span-9 space-y-4">
             <div className="rounded-2xl border bg-white p-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -288,6 +319,82 @@ export default function CreateClient() {
                       </div>
                     </button>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Gallery */}
+            <div className="rounded-2xl border bg-white p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">Gallery</div>
+                <div className="text-xs text-neutral-500">
+                  {loadingGallery ? "Loading…" : `${galleryBg.length} BG · ${galleryElements.length} ELEMENTS`}
+                </div>
+              </div>
+
+              {loadingGallery ? (
+                <div className="mt-4 text-sm text-neutral-500">Loading gallery…</div>
+              ) : (
+                <div className="mt-4 space-y-6">
+                  <div>
+                    <div className="mb-2 text-xs font-medium text-neutral-600">Backgrounds</div>
+                    {galleryBg.length === 0 ? (
+                      <div className="rounded-xl border border-dashed p-4 text-xs text-neutral-500">No BG assets.</div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                        {galleryBg.map(a => (
+                          <button
+                            key={a.id}
+                            onClick={() => pickAsset(a)}
+                            className="group overflow-hidden rounded-2xl border bg-white text-left hover:shadow-sm"
+                          >
+                            <div className="aspect-square w-full bg-neutral-100">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={a.publicUrl}
+                                alt={a.fileName}
+                                className="h-full w-full object-contain"
+                                loading="lazy"
+                              />
+                            </div>
+                            <div className="p-2">
+                              <div className="truncate text-xs font-medium">{a.fileName}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="mb-2 text-xs font-medium text-neutral-600">Elements</div>
+                    {galleryElements.length === 0 ? (
+                      <div className="rounded-xl border border-dashed p-4 text-xs text-neutral-500">No ELEMENTS assets.</div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                        {galleryElements.map(a => (
+                          <button
+                            key={a.id}
+                            onClick={() => pickAsset(a)}
+                            className="group overflow-hidden rounded-2xl border bg-white text-left hover:shadow-sm"
+                          >
+                            <div className="aspect-square w-full bg-neutral-100">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={a.publicUrl}
+                                alt={a.fileName}
+                                className="h-full w-full object-contain"
+                                loading="lazy"
+                              />
+                            </div>
+                            <div className="p-2">
+                              <div className="truncate text-xs font-medium">{a.fileName}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
