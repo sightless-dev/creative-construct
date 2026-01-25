@@ -5,9 +5,11 @@ require("dotenv").config({ path: "apps/api/.env" });
 require("dotenv").config(); // на всякий (если есть корневой .env)
 
 const { PrismaClient } = require("@prisma/client");
+const sizeOf = require("image-size");
 
 const prisma = new PrismaClient();
-const LIB_ROOT = path.resolve(process.cwd(), "storage", "library");
+const STORAGE_DIR = process.env.STORAGE_DIR || "storage";
+const LIB_ROOT = path.resolve(process.cwd(), STORAGE_DIR);
 
 function slugify(input) {
   return (
@@ -33,6 +35,16 @@ function detectMime(file) {
   return "application/octet-stream";
 }
 
+function readImageMeta(absPath) {
+  try {
+    const { width, height } = sizeOf(absPath);
+    return { width, height };
+  } catch (error) {
+    console.warn(`[scan] Failed to read image size: ${absPath}`);
+    return { width: null, height: null };
+  }
+}
+
 async function upsertSlotGame(name) {
   const slug = slugify(name);
   return prisma.slotGame.upsert({
@@ -43,23 +55,32 @@ async function upsertSlotGame(name) {
 }
 
 async function upsertAsset(slotGameId, category, absPath) {
-  const rel = path.relative(process.cwd(), absPath).replace(/\\/g, "/");
+  const rel = path.relative(LIB_ROOT, absPath).replace(/\\/g, "/");
+  const storageKey = `${STORAGE_DIR}/${rel}`;
   const fileName = path.basename(absPath);
+  const stats = fs.statSync(absPath);
+  const { width, height } = readImageMeta(absPath);
 
   await prisma.asset.upsert({
-    where: { storageKey: rel },
+    where: { storageKey },
     update: {
       slotGameId,
       category,
       fileName,
       mimeType: detectMime(absPath),
+      width,
+      height,
+      sizeBytes: stats.size,
     },
     create: {
       slotGameId,
       category,
       fileName,
       mimeType: detectMime(absPath),
-      storageKey: rel,
+      storageKey,
+      width,
+      height,
+      sizeBytes: stats.size,
     },
   });
 }
@@ -76,28 +97,51 @@ async function main() {
     .map((d) => d.name);
 
   console.log(`[scan] Slot folders: ${slotFolders.length}`);
+  let assetsUpserted = 0;
+  let skipped = 0;
 
   for (const slotName of slotFolders) {
     const slotPath = path.join(LIB_ROOT, slotName);
     const slotGame = await upsertSlotGame(slotName);
 
-    const cats = [
-      ["BG", "BG"],
-      ["TEXT", "TEXT"],
-      ["ELEMENTS", "ELEMENTS"],
-    ];
+    const categories = new Map([
+      ["bg", "BG"],
+      ["background", "BG"],
+      ["text", "TEXT"],
+      ["elements", "ELEMENTS"],
+      ["element", "ELEMENTS"],
+    ]);
 
-    for (const [folder, cat] of cats) {
+    const catFolders = fs
+      .readdirSync(slotPath, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+
+    for (const folder of catFolders) {
+      const normalized = folder.toLowerCase();
+      const cat = categories.get(normalized);
+      if (!cat) {
+        skipped += 1;
+        continue;
+      }
+
       const catPath = path.join(slotPath, folder);
-      if (!fs.existsSync(catPath)) continue;
+      const files = fs.readdirSync(catPath);
 
-      const files = fs.readdirSync(catPath).filter(isImage);
       for (const f of files) {
+        if (!isImage(f)) {
+          skipped += 1;
+          continue;
+        }
+
         await upsertAsset(slotGame.id, cat, path.join(catPath, f));
+        assetsUpserted += 1;
       }
     }
   }
 
+  console.log(`[scan] Upserted assets: ${assetsUpserted}`);
+  console.log(`[scan] Skipped entries: ${skipped}`);
   console.log("[scan] Done");
 }
 
