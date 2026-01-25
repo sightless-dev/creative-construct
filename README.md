@@ -50,6 +50,16 @@ pnpm dev
 Web: http://localhost:3000/ru  
 API: http://localhost:4000/health
 
+## One-click Windows bootstrap
+
+Run the helper script to bring up Docker, install deps, migrate, scan, and start dev:
+
+```bat
+run-local.bat
+```
+
+Logs are saved to `logs/run-local.log`.
+
 ## Env samples
 
 `apps/api/.env`:
