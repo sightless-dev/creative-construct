@@ -1,6 +1,24 @@
 {
-    "nav.create": "Create",
-    "nav.about": "About",
-    "nav.faq": "FAQ"
-  }
+  "nav.create": "Create",
+  "nav.about": "About",
+  "nav.faq": "FAQ",
+  "home.tagline": "Fast gambling creatives from the asset library",
+  "home.title": "Build promo banners in minutes",
+  "home.subtitle": "Pick a slot, choose a background, text, and elements — then move into the editor.",
+  "home.primaryCta": "Open creator",
+  "home.secondaryCta": "Check API",
+  "home.statusTitle": "Prototype status",
+  "home.status.api": "API /health",
+  "home.status.library": "Asset library",
+  "home.status.next": "Next up",
+  "home.status.ok": "OK",
+  "home.status.ready": "Ready",
+  "home.status.plan": "In progress",
+  "home.feature.library": "Asset library",
+  "home.feature.library.desc": "Scan local storage and surface backgrounds, text, and elements per slot.",
+  "home.feature.templates": "Templates",
+  "home.feature.templates.desc": "Soon: ready-made creative templates and quick presets.",
+  "home.feature.export": "Export",
+  "home.feature.export.desc": "Prepare watermarked exports and payments in the next milestone."
+}
   
