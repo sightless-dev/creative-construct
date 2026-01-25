@@ -49,6 +49,7 @@ model Asset {
   mimeType   String
   width      Int?
   height     Int?
+  sizeBytes  Int?
   tags       String[]      @default([])
 
   createdAt  DateTime @default(now())

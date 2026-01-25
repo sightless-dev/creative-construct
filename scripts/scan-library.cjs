@@ -5,6 +5,7 @@ require("dotenv").config({ path: "apps/api/.env" });
 require("dotenv").config(); // на всякий (если есть корневой .env)
 
 const { PrismaClient } = require("@prisma/client");
+const sizeOf = require("image-size");
 
 const prisma = new PrismaClient();
 const STORAGE_DIR = process.env.STORAGE_DIR || "storage";
@@ -34,6 +35,16 @@ function detectMime(file) {
   return "application/octet-stream";
 }
 
+function readImageMeta(absPath) {
+  try {
+    const { width, height } = sizeOf(absPath);
+    return { width, height };
+  } catch (error) {
+    console.warn(`[scan] Failed to read image size: ${absPath}`);
+    return { width: null, height: null };
+  }
+}
+
 async function upsertSlotGame(name) {
   const slug = slugify(name);
   return prisma.slotGame.upsert({
@@ -47,6 +58,8 @@ async function upsertAsset(slotGameId, category, absPath) {
   const rel = path.relative(LIB_ROOT, absPath).replace(/\\/g, "/");
   const storageKey = `${STORAGE_DIR}/${rel}`;
   const fileName = path.basename(absPath);
+  const stats = fs.statSync(absPath);
+  const { width, height } = readImageMeta(absPath);
 
   await prisma.asset.upsert({
     where: { storageKey },
@@ -55,6 +68,9 @@ async function upsertAsset(slotGameId, category, absPath) {
       category,
       fileName,
       mimeType: detectMime(absPath),
+      width,
+      height,
+      sizeBytes: stats.size,
     },
     create: {
       slotGameId,
@@ -62,6 +78,9 @@ async function upsertAsset(slotGameId, category, absPath) {
       fileName,
       mimeType: detectMime(absPath),
       storageKey,
+      width,
+      height,
+      sizeBytes: stats.size,
     },
   });
 }

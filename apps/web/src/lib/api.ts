@@ -11,6 +11,7 @@ export type Asset = {
   publicUrl: string; // например: http://localhost:4000/files/...
   width?: number | null;
   height?: number | null;
+  sizeBytes?: number | null;
 };
 
 export async function fetchSlotGames(): Promise<SlotGame[]> {

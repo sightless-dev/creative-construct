@@ -38,6 +38,7 @@ export class AssetsController {
         mimeType: true,
         width: true,
         height: true,
+        sizeBytes: true,
         category: true,
       },
     });
