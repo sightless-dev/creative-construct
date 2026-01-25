@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {useTranslations} from "next-intl";
+import HomeGallery from "./ui/HomeGallery";
 
 export default function Home({params}: {params: {locale: string}}) {
   const t = useTranslations();
@@ -85,6 +86,8 @@ export default function Home({params}: {params: {locale: string}}) {
             </div>
           ))}
         </div>
+
+        <HomeGallery locale={locale} />
       </main>
     </div>
   );

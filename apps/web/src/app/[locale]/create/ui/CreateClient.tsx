@@ -1,7 +1,9 @@
 "use client";
 
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {Asset, AssetKind, fetchAssets, fetchSlotGames, SlotGame} from "@/lib/api";
+import {EditorCanvas, EditorCanvasRef} from "./EditorCanvas";
+import {useSearchParams} from "next/navigation";
 
 const KIND_TABS: {key: AssetKind; label: string}[] = [
   { key: "BG", label: "BG" },
@@ -39,6 +41,7 @@ function formatDimensions(asset: Asset | null) {
 }
 
 export default function CreateClient() {
+  const searchParams = useSearchParams();
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [slots, setSlots] = useState<SlotGame[]>([]);
   const [activeSlotSlug, setActiveSlotSlug] = useState<string>("");
@@ -52,6 +55,8 @@ export default function CreateClient() {
   const [sort, setSort] = useState<(typeof SORT_OPTIONS)[number]["value"]>("name-asc");
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
   const [history, setHistory] = useState<Asset[]>([]);
+  const [canvasMode, setCanvasMode] = useState<"square" | "story">("square");
+  const editorRef = useRef<EditorCanvasRef | null>(null);
 
   // “мини-проект”: выбранные ассеты
   const [selected, setSelected] = useState<{BG?: Asset; TEXT?: Asset; ELEMENTS: Asset[]}>({
@@ -66,7 +71,13 @@ export default function CreateClient() {
         const items = await fetchSlotGames();
         if (!alive) return;
         setSlots(items);
-        setActiveSlotSlug(items[0]?.slug || "");
+        const paramSlot = searchParams.get("slot");
+        const defaultSlot = items[0]?.slug || "";
+        setActiveSlotSlug(paramSlot || defaultSlot);
+        const paramKind = searchParams.get("kind");
+        if (paramKind === "BG" || paramKind === "TEXT" || paramKind === "ELEMENTS") {
+          setKind(paramKind);
+        }
       } finally {
         if (alive) setLoadingSlots(false);
       }
@@ -74,7 +85,7 @@ export default function CreateClient() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!activeSlotSlug) return;
@@ -166,6 +177,13 @@ export default function CreateClient() {
 
   function removeElement(id: string) {
     setSelected(s => ({...s, ELEMENTS: s.ELEMENTS.filter(x => x.id !== id)}));
+  }
+
+  const canvasSize = canvasMode === "square" ? {width: 1080, height: 1080} : {width: 1080, height: 1920};
+
+  function exportCanvas(kind: "square" | "story") {
+    const filename = `creative-${kind}-${Date.now()}.png`;
+    editorRef.current?.exportDownload(filename);
   }
 
   return (
@@ -313,6 +331,24 @@ export default function CreateClient() {
                 </div>
               )}
             </div>
+
+            <div className="mt-4 rounded-2xl border bg-white p-3">
+              <div className="mb-2 text-sm font-medium">Export presets</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => exportCanvas("square")}
+                  className="rounded-lg border px-3 py-2 text-xs hover:bg-neutral-50"
+                >
+                  Export 1:1 (1080×1080)
+                </button>
+                <button
+                  onClick={() => exportCanvas("story")}
+                  className="rounded-lg border px-3 py-2 text-xs hover:bg-neutral-50"
+                >
+                  Export 9:16 (1080×1920)
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* RIGHT: assets */}
@@ -426,6 +462,40 @@ export default function CreateClient() {
                   Select an asset to see its preview and metadata.
                 </div>
               )}
+            </div>
+
+            <div className="rounded-2xl border bg-white p-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm font-medium">Canvas mode</div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCanvasMode("square")}
+                    className={cls(
+                      "rounded-lg border px-3 py-2 text-xs",
+                      canvasMode === "square" ? "bg-neutral-900 text-white" : "hover:bg-neutral-50"
+                    )}
+                  >
+                    1:1 (1080×1080)
+                  </button>
+                  <button
+                    onClick={() => setCanvasMode("story")}
+                    className={cls(
+                      "rounded-lg border px-3 py-2 text-xs",
+                      canvasMode === "story" ? "bg-neutral-900 text-white" : "hover:bg-neutral-50"
+                    )}
+                  >
+                    9:16 (1080×1920)
+                  </button>
+                </div>
+              </div>
+
+              <EditorCanvas
+                ref={editorRef}
+                size={canvasSize}
+                bg={selected.BG}
+                text={selected.TEXT}
+                elements={selected.ELEMENTS}
+              />
             </div>
 
             {/* Gallery */}
