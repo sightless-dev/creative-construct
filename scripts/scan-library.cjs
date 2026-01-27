@@ -124,6 +124,7 @@ async function scanOnce() {
   console.log(`[scan] Slot folders: ${slotFolders.length}`);
   let assetsUpserted = 0;
   let skipped = 0;
+  let unknownCategory = 0;
   const scannedSlugs = new Set();
 
   for (const slotName of slotFolders) {
@@ -140,35 +141,37 @@ async function scanOnce() {
       ["element", "ELEMENTS"],
     ]);
 
-    const catFolders = fs
-      .readdirSync(slotPath, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
+    const walk = (dir) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const absPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(absPath);
+          continue;
+        }
 
-    for (const folder of catFolders) {
-      const normalized = folder.toLowerCase();
-      const cat = categories.get(normalized);
-      if (!cat) {
-        skipped += 1;
-        continue;
-      }
-
-      const catPath = path.join(slotPath, folder);
-      const files = fs.readdirSync(catPath);
-
-      for (const f of files) {
-        if (!isImage(f)) {
+        if (!isImage(entry.name)) {
           skipped += 1;
           continue;
         }
 
-        const absPath = path.join(catPath, f);
+        const relFromSlot = path.relative(slotPath, absPath).replace(/\\/g, "/");
+        const firstSegment = relFromSlot.split("/")[0] || "";
+        const normalized = firstSegment.toLowerCase();
+        const cat = categories.get(normalized) || "ELEMENTS";
+
+        if (!categories.has(normalized) && normalized) {
+          unknownCategory += 1;
+        }
+
         await upsertAsset(slotGame.id, cat, absPath);
         assetsUpserted += 1;
         const rel = path.relative(LIB_ROOT, absPath).replace(/\\/g, "/");
         seenKeys.add(`${STORAGE_DIR}/library/${rel}`);
       }
-    }
+    };
+
+    walk(slotPath);
 
     await removeMissingAssets(slotGame.id, seenKeys);
   }
@@ -177,6 +180,7 @@ async function scanOnce() {
 
   console.log(`[scan] Upserted assets: ${assetsUpserted}`);
   console.log(`[scan] Skipped entries: ${skipped}`);
+  console.log(`[scan] Unknown category folders: ${unknownCategory}`);
   console.log("[scan] Done");
 }
 
